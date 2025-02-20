@@ -189,7 +189,7 @@ var (
                             }
                         }
                         start := time.Now()
-                        err = f.SaveAs(fmt.Sprintf("%s/%s.xlsx", table.TableSchema, xlsxName))
+                        err = f.SaveAs(fmt.Sprintf("dump/%s/%s.xlsx", table.TableSchema, xlsxName))
                         if err != nil {
                             glog.Fatal(gerror.Wrap(err, "f.SaveAs Failed"))
                         }
