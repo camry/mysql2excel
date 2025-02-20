@@ -2,6 +2,7 @@ package cmd
 
 import (
     "fmt"
+    "os"
     "regexp"
     "strconv"
     "strings"
@@ -189,7 +190,15 @@ var (
                             }
                         }
                         start := time.Now()
-                        err = f.SaveAs(fmt.Sprintf("dump/%s/%s.xlsx", table.TableSchema, xlsxName))
+                        path := fmt.Sprintf("dump/%s", table.TableSchema)
+                        _, err = os.Stat(path)
+                        if os.IsNotExist(err) {
+                            err = os.MkdirAll(path, os.ModePerm)
+                            if err != nil {
+                                glog.Fatal(gerror.Wrap(err, "os.MkdirAll Failed"))
+                            }
+                        }
+                        err = f.SaveAs(fmt.Sprintf("%s/%s.xlsx", path, xlsxName))
                         if err != nil {
                             glog.Fatal(gerror.Wrap(err, "f.SaveAs Failed"))
                         }
