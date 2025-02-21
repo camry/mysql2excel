@@ -49,6 +49,7 @@ func (td *TableDiff) Run() error {
         targetTableList []*model.Table
         addTableList    []*model.Table
         delTableList    []*model.Table
+        diffTableList   []*model.Table
         err             error
     )
 
@@ -70,14 +71,16 @@ func (td *TableDiff) Run() error {
         }
     }
     for _, table := range sourceTableList {
-        if !lo.HasKey(td.targetTableMap, table.TableName) {
+        if lo.HasKey(td.targetTableMap, table.TableName) {
+            diffTableList = append(diffTableList, table)
+        } else {
             addTableList = append(addTableList, table)
         }
     }
 
     td.doAddTableList(addTableList)
     td.doDelTableList(delTableList)
-    // TODO DIFF
+    td.doDiffTableList(addTableList)
 
     return nil
 }
@@ -428,4 +431,51 @@ func (td *TableDiff) doDelTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
         glog.Fatal(gerror.Wrap(err, "f.SaveAs Failed"))
     }
     bar.EwmaIncrement(time.Since(start))
+}
+
+func (td *TableDiff) doDiffTableList(tableList []*model.Table) {
+    tableChunkList := lo.Chunk(tableList, 10)
+    for _, tableChunk := range tableChunkList {
+        errChan := make(chan error, 10)
+        wg := &sync.WaitGroup{}
+        progress := mpb.New(mpb.WithWaitGroup(wg))
+        wg.Add(len(tableChunk))
+        for _, table := range tableChunk {
+            count := int64(0)
+            limit := int32(10000)
+            page := int32(1)
+
+            err := td.sourceDb.Table(table.TableName).Count(&count).Error
+            if err != nil {
+                glog.Fatal(gerror.Wrapf(err, "doAddTableList TableName %s Count Failed", table.TableName))
+            }
+            if count > 0 {
+                page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
+            }
+
+            bar := progress.AddBar(int64(page),
+                mpb.PrependDecorators(
+                    decor.Name(color.BlueString("%s", table.TableName)),
+                    decor.Percentage(decor.WCSyncSpace),
+                ),
+                mpb.AppendDecorators(
+                    decor.OnComplete(
+                        decor.AverageETA(decor.ET_STYLE_GO, decor.WCSyncWidth), "DONE",
+                    ),
+                ),
+            )
+            go td.doDiffTable(bar, wg, errChan, table, limit, page)
+        }
+        progress.Wait()
+        close(errChan)
+        for errC := range errChan {
+            if errC != nil {
+                glog.Fatal(errC)
+            }
+        }
+    }
+}
+
+func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan error, table *model.Table, limit int32, page int32) {
+    // TODO Diff Table
 }
