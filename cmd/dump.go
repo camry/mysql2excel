@@ -13,6 +13,7 @@ import (
     "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
+    "github.com/dromara/carbon/v2"
     "github.com/fatih/color"
     "github.com/samber/lo"
     "github.com/spf13/cobra"
@@ -77,8 +78,8 @@ var (
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "gdb.New Table TABLES FindInBatches Failed"))
             }
-            tableChunkList := lo.Chunk(tableList, 10)
 
+            tableChunkList := lo.Chunk(tableList, 10)
             for _, tableChunk := range tableChunkList {
                 errChan := make(chan error, 10)
                 var wg sync.WaitGroup
@@ -136,7 +137,10 @@ var (
                                 glog.Fatal(gerror.Wrap(err1, "excelize.ColumnNumberToName Failed"))
                             }
 
-                            width := float64(len(column.ColumnName)) * 1.6
+                            width := float64(len(column.ColumnName)) * 1.5
+                            if width < 20 {
+                                width = 20
+                            }
                             err = f.SetColWidth(sheetName, colName, colName, width)
                             if err != nil {
                                 glog.Fatal(gerror.Wrap(err, "f.SetColWidth Failed"))
@@ -172,6 +176,9 @@ var (
                                                 if err1 != nil {
                                                     err1 = gerror.Wrap(err1, "excelize.ColumnNumberToName Failed")
                                                     goto BarEnd
+                                                }
+                                                if v, ok1 := columnValue.(time.Time); ok1 {
+                                                    columnValue = carbon.CreateFromStdTime(v).ToDateTimeString()
                                                 }
                                                 err1 = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, int(offset)+k+3), columnValue)
                                                 if err1 != nil {
