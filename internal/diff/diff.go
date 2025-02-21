@@ -64,8 +64,8 @@ func (td *TableDiff) Run() error {
         }
     }
 
-    td.doAddTableList(addTableList)
-    td.doDelTableList(delTableList)
+    // td.doAddTableList(addTableList)
+    // td.doDelTableList(delTableList)
     td.doDiffTableList(diffTableList)
 
     return nil

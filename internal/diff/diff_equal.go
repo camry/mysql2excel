@@ -91,6 +91,9 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
     if err != nil {
         glog.Fatal(gerror.Wrapf(err, "targetDb Table %s COLUMNS Find Failed", table.TableName))
     }
+    if table.TableName == "base_scene_type" {
+        glog.Error("")
+    }
 
     diffColumnList, diffColumnMap := td.diffColumn(sourceColumnList, targetColumnList)
 
@@ -103,8 +106,8 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
     f := xlsxFile.File
 
     // Sheet Title
-    for _, column := range diffColumnList {
-        colName, err1 := excelize.ColumnNumberToName(column.OrdinalPosition)
+    for k, column := range diffColumnList {
+        colName, err1 := excelize.ColumnNumberToName(k + 1)
         if err1 != nil {
             glog.Fatal(gerror.Wrap(err1, "excelize.ColumnNumberToName Failed"))
         }
