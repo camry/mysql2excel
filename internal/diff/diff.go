@@ -105,7 +105,7 @@ func (td *TableDiff) doAddTableList(tableList []*model.Table) {
                 page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
             }
 
-            bar := progress.AddBar(int64(page),
+            bar := progress.AddBar(int64(page+1),
                 mpb.PrependDecorators(
                     decor.Name(color.BlueString("%s", table.TableName)),
                     decor.Percentage(decor.WCSyncSpace),
@@ -279,7 +279,7 @@ func (td *TableDiff) doDelTableList(tableList []*model.Table) {
                 page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
             }
 
-            bar := progress.AddBar(int64(page),
+            bar := progress.AddBar(int64(page+1),
                 mpb.PrependDecorators(
                     decor.Name(color.BlueString("%s", table.TableName)),
                     decor.Percentage(decor.WCSyncSpace),
