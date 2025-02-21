@@ -10,6 +10,7 @@ import (
     "time"
 
     "github.com/camry/fp"
+    "github.com/camry/g/frame/g"
     "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
@@ -160,7 +161,7 @@ var (
                             start := time.Now()
                             offset := limit * (curPage - 1)
                             var (
-                                results []map[string]any
+                                results []g.MapStrAny
                                 err1    error
                             )
                             err1 = sourceDb.Table(tableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
