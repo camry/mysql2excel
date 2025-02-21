@@ -113,7 +113,7 @@ var (
                     go func() {
                         defer wg.Done()
 
-                        xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s", table.TableName))
+                        xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s（%s）", table.TableName, table.TableComment))
                         sheetName := "Sheet1"
 
                         var columnList []model.Column
