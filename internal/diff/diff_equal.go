@@ -3,10 +3,13 @@ package diff
 import (
     "fmt"
     "os"
+    "strings"
     "sync"
     "time"
 
     "github.com/camry/fp"
+    "github.com/camry/g/frame/g"
+    "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
     "github.com/fatih/color"
@@ -28,19 +31,28 @@ func (td *TableDiff) doDiffTableList(tableList []model.Table) {
         progress := mpb.New(mpb.WithWaitGroup(wg))
         wg.Add(len(tableChunk))
         for _, table := range tableChunk {
-            count := int64(0)
             limit := int32(10000)
-            page := int32(1)
+            sourceCount := int64(0)
+            sourcePage := int32(1)
+            targetCount := int64(0)
+            targetPage := int32(1)
 
-            err := td.sourceDb.Table(table.TableName).Count(&count).Error
+            err := td.sourceDb.Table(table.TableName).Count(&sourceCount).Error
             if err != nil {
-                glog.Fatal(gerror.Wrapf(err, "doAddTableList TableName %s Count Failed", table.TableName))
+                glog.Fatal(gerror.Wrapf(err, "doDiffTableList sourceDb TableName %s Count Failed", table.TableName))
             }
-            if count > 0 {
-                page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
+            if sourceCount > 0 {
+                sourcePage = fp.F64FromInt64(sourceCount).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
+            }
+            err = td.targetDb.Table(table.TableName).Count(&targetCount).Error
+            if err != nil {
+                glog.Fatal(gerror.Wrapf(err, "doDiffTableList targetDb TableName %s Count Failed", table.TableName))
+            }
+            if targetCount > 0 {
+                targetPage = fp.F64FromInt64(targetCount).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
             }
 
-            bar := progress.AddBar(int64(page+1),
+            bar := progress.AddBar(int64(sourcePage)+int64(targetPage)+sourceCount+targetCount+3,
                 mpb.PrependDecorators(
                     decor.Name(color.BlueString("%s", table.TableName)),
                     decor.Percentage(decor.WCSyncSpace),
@@ -51,7 +63,7 @@ func (td *TableDiff) doDiffTableList(tableList []model.Table) {
                     ),
                 ),
             )
-            go td.doDiffTable(bar, wg, errChan, table, limit, page)
+            go td.doDiffTable(bar, wg, errChan, table, limit, sourceCount, targetCount, sourcePage, targetPage)
         }
         progress.Wait()
         close(errChan)
@@ -63,7 +75,9 @@ func (td *TableDiff) doDiffTableList(tableList []model.Table) {
     }
 }
 
-func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan error, table model.Table, limit int32, page int32) {
+func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan error, table model.Table, limit int32, sourceCount, targetCount int64, sourcePage, targetPage int32) {
+    defer wg.Done()
+
     var (
         sourceColumnList []model.Column
         targetColumnList []model.Column
@@ -78,7 +92,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
         glog.Fatal(gerror.Wrapf(err, "targetDb Table %s COLUMNS Find Failed", table.TableName))
     }
 
-    diffColumnList, diffColumnMap := td.doDiffColumn(sourceColumnList, targetColumnList)
+    diffColumnList, diffColumnMap := td.diffColumn(sourceColumnList, targetColumnList)
 
     xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s（%s）", table.TableName, table.TableComment))
 
@@ -140,23 +154,277 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
         }
     }
 
-    start := time.Now()
-    path := fmt.Sprintf("diff/%s", td.sourceDbConfig.Database)
-    _, err = os.Stat(path)
-    if os.IsNotExist(err) {
-        err = os.MkdirAll(path, os.ModePerm)
-        if err != nil {
-            glog.Fatal(gerror.Wrap(err, "os.MkdirAll Failed"))
+    // Sheet Data
+    sourcePrimaryKeyList := td.getSourcePrimaryKeyList(table)
+    targetPrimaryKeyList := td.getTargetPrimaryKeyList(table)
+    sourceTableDataList := make([]g.MapStrAny, 0, sourceCount)
+    targetTableDataList := make([]g.MapStrAny, 0, targetCount)
+    sourceTableDataMap := make(map[string]g.MapStrAny, sourceCount)
+    targetTableDataMap := make(map[string]g.MapStrAny, targetCount)
+
+    for curPage := int32(1); curPage <= sourcePage; curPage++ {
+        start := time.Now()
+        offset := limit * (curPage - 1)
+        var (
+            results []g.MapStrAny
+            err1    error
+        )
+        err1 = td.sourceDb.Table(table.TableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
+        if err1 != nil {
+            goto SourceBarEnd
+        } else {
+            resultsLen := len(results)
+            if resultsLen > 0 {
+                for _, result := range results {
+                    sourceTableDataList = append(sourceTableDataList, result)
+                }
+            }
+        }
+    SourceBarEnd:
+        bar.EwmaIncrement(time.Since(start))
+        if err1 != nil {
+            errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
         }
     }
-    err = f.SaveAs(fmt.Sprintf("%s/DIFF %s.xlsx", path, xlsxName))
-    if err != nil {
-        glog.Fatal(gerror.Wrap(err, "f.SaveAs Failed"))
+    for curPage := int32(1); curPage <= targetPage; curPage++ {
+        start := time.Now()
+        offset := limit * (curPage - 1)
+        var (
+            results []g.MapStrAny
+            err1    error
+        )
+        err1 = td.targetDb.Table(table.TableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
+        if err1 != nil {
+            goto TargetBarEnd
+        } else {
+            resultsLen := len(results)
+            if resultsLen > 0 {
+                for _, result := range results {
+                    targetTableDataList = append(targetTableDataList, result)
+                }
+            }
+        }
+    TargetBarEnd:
+        bar.EwmaIncrement(time.Since(start))
+        if err1 != nil {
+            errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
+        }
+    }
+
+    sourceStart := time.Now()
+    for _, sourceTableData := range sourceTableDataList {
+        sourceTableDataMap[td.getPrimaryKeyData(sourcePrimaryKeyList, sourceTableData)] = sourceTableData
+    }
+    bar.EwmaIncrement(time.Since(sourceStart))
+    targetStart := time.Now()
+    for _, targetTableData := range targetTableDataList {
+        targetTableDataMap[td.getPrimaryKeyData(targetPrimaryKeyList, targetTableData)] = targetTableData
+    }
+    bar.EwmaIncrement(time.Since(targetStart))
+
+    // DO DIFF
+    i := 0
+    for _, sourceTableData := range sourceTableDataList {
+        start := time.Now()
+        k := td.getPrimaryKeyData(sourcePrimaryKeyList, sourceTableData)
+
+        if _, ok := targetTableDataMap[k]; !ok {
+            for kk, column := range diffColumnList {
+                colName, err2 := excelize.ColumnNumberToName(kk + 1)
+                if err2 != nil {
+                    errChan <- err2
+                    return
+                }
+                cell := fmt.Sprintf("%s%d", colName, i+3)
+                if diffColumnMap[column.ColumnName] < def.DiffColumnStateDel {
+                    err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                        return
+                    }
+                    style, err3 := f.NewStyle(def.StyleAdd)
+                    if err3 != nil {
+                        errChan <- err3
+                        return
+                    }
+                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                        return
+                    }
+                } else {
+                    err = f.SetCellValue(def.SheetNameDefault, cell, "")
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                        return
+                    }
+                    style, err3 := f.NewStyle(def.StyleDel)
+                    if err3 != nil {
+                        errChan <- err3
+                        return
+                    }
+                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                        return
+                    }
+                }
+            }
+            i++
+        } else {
+            isAdd := false
+            for _, column := range diffColumnList {
+                switch diffColumnMap[column.ColumnName] {
+                case def.DiffColumnStateAdd, def.DiffColumnStateDel:
+                    isAdd = true
+                default:
+                    if sourceTableData[column.ColumnName] != targetTableDataMap[k][column.ColumnName] {
+                        isAdd = true
+                    }
+                }
+            }
+            if isAdd {
+                for kk, column := range diffColumnList {
+                    colName, err2 := excelize.ColumnNumberToName(kk + 1)
+                    if err2 != nil {
+                        errChan <- err2
+                        return
+                    }
+                    cell := fmt.Sprintf("%s%d", colName, i+3)
+                    switch diffColumnMap[column.ColumnName] {
+                    case def.DiffColumnStateAdd:
+                        err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                        if err != nil {
+                            errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                            return
+                        }
+                        style, err3 := f.NewStyle(def.StyleAdd)
+                        if err3 != nil {
+                            errChan <- err3
+                            return
+                        }
+                        err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                        if err != nil {
+                            errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                            return
+                        }
+                    case def.DiffColumnStateDel:
+                        err = f.SetCellValue(def.SheetNameDefault, cell, targetTableDataMap[k][column.ColumnName])
+                        if err != nil {
+                            errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                            return
+                        }
+                        style, err3 := f.NewStyle(def.StyleDel)
+                        if err3 != nil {
+                            errChan <- err3
+                            return
+                        }
+                        err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                        if err != nil {
+                            errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                            return
+                        }
+                    default:
+                        if sourceTableData[column.ColumnName] != targetTableDataMap[k][column.ColumnName] {
+                            err = f.SetCellValue(def.SheetNameDefault, cell, fmt.Sprintf("%v←%v", sourceTableData[column.ColumnName], targetTableDataMap[k][column.ColumnName]))
+                            if err != nil {
+                                errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                                return
+                            }
+                            style, err3 := f.NewStyle(def.StyleEqual)
+                            if err3 != nil {
+                                errChan <- err3
+                                return
+                            }
+                            err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                            if err != nil {
+                                errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                                return
+                            }
+                        } else {
+                            err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                            if err != nil {
+                                errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                                return
+                            }
+                        }
+                    }
+                }
+                i++
+            }
+        }
+        bar.EwmaIncrement(time.Since(start))
+    }
+    for _, targetTableData := range targetTableDataList {
+        start := time.Now()
+        k := td.getPrimaryKeyData(sourcePrimaryKeyList, targetTableData)
+
+        if _, ok := sourceTableDataMap[k]; !ok {
+            for kk, column := range diffColumnList {
+                colName, err2 := excelize.ColumnNumberToName(kk + 1)
+                if err2 != nil {
+                    errChan <- err2
+                    return
+                }
+                cell := fmt.Sprintf("%s%d", colName, i+3)
+                if diffColumnMap[column.ColumnName] != def.DiffColumnStateAdd {
+                    err = f.SetCellValue(def.SheetNameDefault, cell, targetTableData[column.ColumnName])
+                    if err != nil {
+                        errChan <- err
+                        return
+                    }
+                    style, err3 := f.NewStyle(def.StyleDel)
+                    if err3 != nil {
+                        errChan <- err3
+                        return
+                    }
+                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                        return
+                    }
+                } else {
+                    err = f.SetCellValue(def.SheetNameDefault, cell, "")
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
+                        return
+                    }
+                    style, err3 := f.NewStyle(def.StyleAdd)
+                    if err3 != nil {
+                        errChan <- err3
+                        return
+                    }
+                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    if err != nil {
+                        errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
+                        return
+                    }
+                }
+            }
+            i++
+        }
+        bar.EwmaIncrement(time.Since(start))
+    }
+
+    start := time.Now()
+    if i > 0 {
+        path := fmt.Sprintf("diff/%s", td.sourceDbConfig.Database)
+        _, err = os.Stat(path)
+        if os.IsNotExist(err) {
+            err = os.MkdirAll(path, os.ModePerm)
+            if err != nil {
+                glog.Fatal(gerror.Wrap(err, "os.MkdirAll Failed"))
+            }
+        }
+        err = f.SaveAs(fmt.Sprintf("%s/DIFF %s.xlsx", path, xlsxName))
+        if err != nil {
+            glog.Fatal(gerror.Wrap(err, "f.SaveAs Failed"))
+        }
     }
     bar.EwmaIncrement(time.Since(start))
 }
 
-func (td *TableDiff) doDiffColumn(sourceColumnList, targetColumnList []model.Column) ([]model.Column, map[string]def.DiffColumnState) {
+func (td *TableDiff) diffColumn(sourceColumnList, targetColumnList []model.Column) ([]model.Column, map[string]def.DiffColumnState) {
     var diffColumnList []model.Column
     diffColumnMap := make(map[string]def.DiffColumnState)
 
@@ -182,4 +450,44 @@ func (td *TableDiff) doDiffColumn(sourceColumnList, targetColumnList []model.Col
         }
     }
     return diffColumnList, diffColumnMap
+}
+
+func (td *TableDiff) getSourcePrimaryKeyList(table model.Table) []string {
+    var (
+        sourceStatisticList []model.Statistic
+        primaryKeyList      []string
+        err                 error
+    )
+    err = td.sourceDb.Table("information_schema.STATISTICS").Where("TABLE_SCHEMA = ? AND TABLE_NAME = ?", td.sourceDbConfig.Database, table.TableName).Order("SEQ_IN_INDEX ASC").Find(&sourceStatisticList).Error
+    if err != nil {
+        glog.Fatal(gerror.Wrapf(err, "sourceDb Table %s STATISTICS Find Failed", table.TableName))
+    }
+    for _, statistic := range sourceStatisticList {
+        primaryKeyList = append(primaryKeyList, statistic.ColumnName)
+    }
+    return primaryKeyList
+}
+
+func (td *TableDiff) getTargetPrimaryKeyList(table model.Table) []string {
+    var (
+        targetStatisticList []model.Statistic
+        primaryKeyList      []string
+        err                 error
+    )
+    err = td.targetDb.Table("information_schema.STATISTICS").Where("TABLE_SCHEMA = ? AND TABLE_NAME = ?", td.targetDbConfig.Database, table.TableName).Order("SEQ_IN_INDEX ASC").Find(&targetStatisticList).Error
+    if err != nil {
+        glog.Fatal(gerror.Wrapf(err, "targetDb Table %s STATISTICS Find Failed", table.TableName))
+    }
+    for _, statistic := range targetStatisticList {
+        primaryKeyList = append(primaryKeyList, statistic.ColumnName)
+    }
+    return primaryKeyList
+}
+
+func (td *TableDiff) getPrimaryKeyData(primaryKeyList []string, record g.MapStrAny) string {
+    var primaryData []string
+    for _, columnName := range primaryKeyList {
+        primaryData = append(primaryData, fmt.Sprintf("%v", record[columnName]))
+    }
+    return strings.Join(primaryData, "_")
 }
