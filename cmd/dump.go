@@ -65,6 +65,7 @@ var (
                 DSN: fmt.Sprintf(Dsn,
                     sourceDbConfig.User, sourceDbConfig.Password,
                     sourceDbConfig.Host, sourceDbConfig.Port,
+                    sourceDbConfig.Database,
                     sourceDbConfig.Charset,
                 ),
             }), &gorm.Config{
@@ -75,9 +76,9 @@ var (
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "gorm.Open Failed"))
             }
-            err = sourceDb.Table("TABLES").Where("TABLE_SCHEMA = ?", dumpDb).Find(&tableList).Error
+            err = sourceDb.Table("information_schema.TABLES").Where("TABLE_SCHEMA = ?", dumpDb).Find(&tableList).Error
             if err != nil {
-                glog.Fatal(gerror.Wrap(err, "gdb.New Table TABLES FindInBatches Failed"))
+                glog.Fatal(gerror.Wrap(err, "gdb.New Table TABLES Find Failed"))
             }
 
             tableChunkList := lo.Chunk(tableList, 10)
@@ -119,7 +120,7 @@ var (
                         sheetName := "Sheet1"
 
                         var columnList []model.Column
-                        err := sourceDb.Table("COLUMNS").Where("TABLE_SCHEMA = ? AND TABLE_NAME = ?", table.TableSchema, table.TableName).Find(&columnList).Error
+                        err := sourceDb.Table("information_schema.COLUMNS").Where("TABLE_SCHEMA = ? AND TABLE_NAME = ?", table.TableSchema, table.TableName).Order("ORDINAL_POSITION ASC").Find(&columnList).Error
                         if err != nil {
                             glog.Fatal(gerror.Wrap(err, "sourceDb Table COLUMNS Find Failed"))
                         }
@@ -128,7 +129,6 @@ var (
                         if err != nil {
                             glog.Fatal(gerror.Wrap(err, "excel.NewFile Failed"))
                         }
-
                         f := xlsxFile.File
 
                         // Sheet Title
@@ -137,8 +137,10 @@ var (
                             if err1 != nil {
                                 glog.Fatal(gerror.Wrap(err1, "excelize.ColumnNumberToName Failed"))
                             }
-
                             width := float64(len(column.ColumnName)) * 1.5
+                            if width > 80 {
+                                width = 80
+                            }
                             if width < 20 {
                                 width = 20
                             }

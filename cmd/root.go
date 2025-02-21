@@ -3,7 +3,7 @@ package cmd
 import "github.com/spf13/cobra"
 
 const (
-    Dsn         = "%s:%s@tcp(%s:%d)/information_schema?timeout=10s&parseTime=true&charset=%s"
+    Dsn         = "%s:%s@tcp(%s:%d)/%s?timeout=10s&parseTime=true&charset=%s"
     HostPattern = "^(.*)\\:(.*)\\@(.*)\\:(\\d+)$"
     DbPattern   = "^([A-Za-z0-9_]+)\\:([A-Za-z0-9_]+)$"
 )
