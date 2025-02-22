@@ -11,7 +11,6 @@ import (
 
     "github.com/camry/fp"
     "github.com/camry/g/frame/g"
-    "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
     "github.com/dromara/carbon/v2"
@@ -102,7 +101,7 @@ var (
                         page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
                     }
 
-                    bar := p.AddBar(int64(page),
+                    bar := p.AddBar(count+1,
                         mpb.PrependDecorators(
                             decor.Name(color.BlueString("%s", table.TableName)),
                             decor.Percentage(decor.WCSyncSpace),
@@ -161,7 +160,6 @@ var (
                         }
 
                         for curPage := int32(1); curPage <= page; curPage++ {
-                            start := time.Now()
                             offset := limit * (curPage - 1)
                             var (
                                 results []g.MapStrAny
@@ -169,35 +167,33 @@ var (
                             )
                             err1 = sourceDb.Table(tableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
                             if err1 != nil {
-                                goto BarEnd
+                                errChan <- err1
+                                return
                             } else {
                                 resultsLen := len(results)
                                 if resultsLen > 0 {
                                     for k, result := range results {
+                                        start := time.Now()
                                         for _, column := range columnList {
                                             if columnValue, ok := result[column.ColumnName]; ok {
                                                 colName, err1 := excelize.ColumnNumberToName(column.OrdinalPosition)
                                                 if err1 != nil {
-                                                    err1 = gerror.Wrap(err1, "excelize.ColumnNumberToName Failed")
-                                                    goto BarEnd
+                                                    errChan <- gerror.Wrap(err1, "excelize.ColumnNumberToName Failed")
+                                                    return
                                                 }
                                                 if v, ok1 := columnValue.(time.Time); ok1 {
                                                     columnValue = carbon.CreateFromStdTime(v).ToDateTimeString()
                                                 }
                                                 err1 = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, int(offset)+k+3), columnValue)
                                                 if err1 != nil {
-                                                    err1 = gerror.Wrap(err1, "f.SetCellValue Failed")
-                                                    goto BarEnd
+                                                    errChan <- gerror.Wrap(err1, "f.SetCellValue Failed")
+                                                    return
                                                 }
                                             }
                                         }
+                                        bar.EwmaIncrement(time.Since(start))
                                     }
                                 }
-                            }
-                        BarEnd:
-                            bar.EwmaIncrement(time.Since(start))
-                            if err1 != nil {
-                                errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
                             }
                         }
                         start := time.Now()
