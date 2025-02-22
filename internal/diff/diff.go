@@ -38,7 +38,6 @@ func (td *TableDiff) Run() error {
         diffTableList   []model.Table
         err             error
     )
-
     err = td.sourceDb.Table("information_schema.TABLES").Where("TABLE_SCHEMA = ?", td.sourceDbConfig.Database).Find(&sourceTableList).Error
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "gdb.New sourceTableList Find Failed"))
@@ -63,10 +62,8 @@ func (td *TableDiff) Run() error {
             addTableList = append(addTableList, table)
         }
     }
-
     td.doAddTableList(addTableList)
     td.doDelTableList(delTableList)
     td.doDiffTableList(diffTableList)
-
     return nil
 }

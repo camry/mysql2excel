@@ -8,7 +8,6 @@ import (
 
     "github.com/camry/fp"
     "github.com/camry/g/frame/g"
-    "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
     "github.com/dromara/carbon/v2"
@@ -43,7 +42,7 @@ func (td *TableDiff) doAddTableList(tableList []model.Table) {
                 page = fp.F64FromInt64(count).DivPrecise(fp.F64FromInt32(limit)).CeilToInt()
             }
 
-            bar := progress.AddBar(int64(page+1),
+            bar := progress.AddBar(count+1,
                 mpb.PrependDecorators(
                     decor.Name(fmt.Sprintf("%s %s", color.GreenString("ADD"), color.BlueString(table.TableName))),
                     decor.Percentage(decor.WCSyncSpace),
@@ -54,6 +53,7 @@ func (td *TableDiff) doAddTableList(tableList []model.Table) {
                     ),
                 ),
             )
+
             go td.doAddTable(bar, wg, errChan, table, limit, page)
         }
         progress.Wait()
@@ -117,7 +117,6 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
 
     // Sheet Data
     for curPage := int32(1); curPage <= page; curPage++ {
-        start := time.Now()
         offset := limit * (curPage - 1)
         var (
             results []g.MapStrAny
@@ -125,17 +124,19 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
         )
         err1 = td.sourceDb.Table(table.TableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
         if err1 != nil {
-            goto BarEnd
+            errChan <- err1
+            return
         } else {
             resultsLen := len(results)
             if resultsLen > 0 {
                 for k, result := range results {
+                    start := time.Now()
                     for _, column := range columnList {
                         if columnValue, ok := result[column.ColumnName]; ok {
                             colName, err2 := excelize.ColumnNumberToName(column.OrdinalPosition)
                             if err2 != nil {
-                                err2 = gerror.Wrap(err2, "excelize.ColumnNumberToName Failed")
-                                goto BarEnd
+                                errChan <- gerror.Wrap(err2, "excelize.ColumnNumberToName Failed")
+                                return
                             }
                             if v, ok1 := columnValue.(time.Time); ok1 {
                                 columnValue = carbon.CreateFromStdTime(v).ToDateTimeString()
@@ -144,21 +145,17 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
                             lastCell = cell
                             err2 = f.SetCellValue(def.SheetNameDefault, cell, columnValue)
                             if err2 != nil {
-                                err2 = gerror.Wrap(err2, "f.SetCellValue Failed")
-                                goto BarEnd
+                                errChan <- gerror.Wrap(err2, "f.SetCellValue Failed")
+                                return
                             }
                         }
                     }
+                    bar.EwmaIncrement(time.Since(start))
                 }
             }
         }
-    BarEnd:
-        bar.EwmaIncrement(time.Since(start))
-        if err1 != nil {
-            errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
-        }
     }
-
+    start := time.Now()
     style, err := f.NewStyle(def.StyleAdd)
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "f.NewStyle Failed"))
@@ -167,8 +164,6 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "f.SetCellStyle Failed"))
     }
-
-    start := time.Now()
     path := fmt.Sprintf("diff/%s", td.sourceDbConfig.Database)
     _, err = os.Stat(path)
     if os.IsNotExist(err) {
