@@ -11,4 +11,4 @@ mysql2excel diff --source user:password@host:port --target user:password@host:po
 
 ## 差异颜色说明
 
-![差异颜色说明](./差异颜色说明.jpg)
+![差异颜色说明](diff.jpg)
