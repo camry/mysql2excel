@@ -9,7 +9,6 @@ import (
 
     "github.com/camry/fp"
     "github.com/camry/g/frame/g"
-    "github.com/camry/g/gerrors/gcode"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
     "github.com/fatih/color"
@@ -174,7 +173,8 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
         )
         err1 = td.sourceDb.Table(table.TableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
         if err1 != nil {
-            goto SourceBarEnd
+            errChan <- err1
+            return
         } else {
             resultsLen := len(results)
             if resultsLen > 0 {
@@ -183,11 +183,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
             }
         }
-    SourceBarEnd:
         bar.EwmaIncrement(time.Since(start))
-        if err1 != nil {
-            errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
-        }
     }
     for curPage := int32(1); curPage <= targetPage; curPage++ {
         start := time.Now()
@@ -198,7 +194,8 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
         )
         err1 = td.targetDb.Table(table.TableName).Offset(int(offset)).Limit(int(limit)).Find(&results).Error
         if err1 != nil {
-            goto TargetBarEnd
+            errChan <- err1
+            return
         } else {
             resultsLen := len(results)
             if resultsLen > 0 {
@@ -207,11 +204,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
             }
         }
-    TargetBarEnd:
         bar.EwmaIncrement(time.Since(start))
-        if err1 != nil {
-            errChan <- gerror.WrapCode(gcode.CodeDbOperationError, err1, table.TableName)
-        }
     }
 
     sourceStart := time.Now()
