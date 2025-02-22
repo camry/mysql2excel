@@ -2,12 +2,6 @@ package cmd
 
 import "github.com/spf13/cobra"
 
-const (
-    Dsn         = "%s:%s@tcp(%s:%d)/%s?timeout=10s&parseTime=true&charset=%s"
-    HostPattern = "^(.*)\\:(.*)\\@(.*)\\:(\\d+)$"
-    DbPattern   = "^([A-Za-z0-9_]+)\\:([A-Za-z0-9_]+)$"
-)
-
 var (
     rootCmd = &cobra.Command{
         Use:   "mysql2excel",

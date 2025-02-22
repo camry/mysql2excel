@@ -25,6 +25,7 @@ import (
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
 
+    "mysql2excel/internal/def"
     "mysql2excel/internal/excel"
     "mysql2excel/internal/model"
 )
@@ -37,7 +38,7 @@ var (
         Use:   "dump",
         Short: "将数据从指定的 MySQL 数据库导出到 Excel 文件",
         Run: func(cmd *cobra.Command, args []string) {
-            sourceMatched, err := regexp.MatchString(HostPattern, dumpSource)
+            sourceMatched, err := regexp.MatchString(def.HostPattern, dumpSource)
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "regexp.MatchString Failed"))
             }
@@ -62,7 +63,7 @@ var (
                 glog.Fatal(gerror.Wrap(err, "strconv.Atoi Failed"))
             }
             sourceDb, err := gorm.Open(mysql.New(mysql.Config{
-                DSN: fmt.Sprintf(Dsn,
+                DSN: fmt.Sprintf(def.Dsn,
                     sourceDbConfig.User, sourceDbConfig.Password,
                     sourceDbConfig.Host, sourceDbConfig.Port,
                     sourceDbConfig.Database,

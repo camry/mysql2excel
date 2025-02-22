@@ -13,6 +13,7 @@ import (
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
 
+    "mysql2excel/internal/def"
     "mysql2excel/internal/diff"
     "mysql2excel/internal/model"
 )
@@ -26,11 +27,11 @@ var (
         Use:   "diff",
         Short: "比较两个 MySQL 数据库之间的差异数据导出到 Excel 文件。",
         Run: func(cmd *cobra.Command, args []string) {
-            sourceMatched, err := regexp.MatchString(HostPattern, diffSource)
+            sourceMatched, err := regexp.MatchString(def.HostPattern, diffSource)
             if err != nil {
                 glog.Fatal(gerror.Wrapf(err, "regexp.MatchString HostPattern diffSource %s Failed", diffSource))
             }
-            dbMatched, err := regexp.MatchString(DbPattern, diffDb)
+            dbMatched, err := regexp.MatchString(def.DbPattern, diffDb)
             if err != nil {
                 glog.Fatal(gerror.Wrapf(err, "regexp.MatchString DbPattern diffDb %s Failed", diffDb))
             }
@@ -57,7 +58,7 @@ var (
                 glog.Fatal(gerror.Wrap(err, "strconv.Atoi Failed"))
             }
             sourceDb, err := gorm.Open(mysql.New(mysql.Config{
-                DSN: fmt.Sprintf(Dsn,
+                DSN: fmt.Sprintf(def.Dsn,
                     sourceDbConfig.User, sourceDbConfig.Password,
                     sourceDbConfig.Host, sourceDbConfig.Port,
                     sourceDbConfig.Database,
@@ -78,7 +79,7 @@ var (
             }
             var targetDb *gorm.DB
             if diffTarget != "" {
-                targetMatched, err1 := regexp.MatchString(HostPattern, diffTarget)
+                targetMatched, err1 := regexp.MatchString(def.HostPattern, diffTarget)
                 if err1 != nil {
                     glog.Fatal(gerror.Wrapf(err1, "regexp.MatchString HostPattern diffTarget %s Failed", diffTarget))
                 }
@@ -95,7 +96,7 @@ var (
                     glog.Fatal(gerror.Wrap(err, "strconv.Atoi Failed"))
                 }
                 targetDb, err = gorm.Open(mysql.New(mysql.Config{
-                    DSN: fmt.Sprintf(Dsn,
+                    DSN: fmt.Sprintf(def.Dsn,
                         targetDbConfig.User, targetDbConfig.Password,
                         targetDbConfig.Host, targetDbConfig.Port,
                         targetDbConfig.Database,
