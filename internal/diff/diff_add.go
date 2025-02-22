@@ -70,6 +70,7 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
     defer wg.Done()
 
     xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s（%s）", table.TableName, table.TableComment))
+    sheetName := lo.Substring(table.TableName, 0, 31)
     lastCell := "A1"
 
     // Sheet Title
@@ -79,7 +80,7 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
         glog.Fatal(gerror.Wrapf(err, "sourceDb Table %s COLUMNS Find Failed", table.TableName))
     }
 
-    xlsxFile, err := excel.NewFile()
+    xlsxFile, err := excel.NewFile(sheetName)
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "excel.NewFile Failed"))
     }
@@ -97,18 +98,18 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
         if width < 20 {
             width = 20
         }
-        err = f.SetColWidth(def.SheetNameDefault, colName, colName, width)
+        err = f.SetColWidth(sheetName, colName, colName, width)
         if err != nil {
             glog.Fatal(gerror.Wrap(err, "f.SetColWidth Failed"))
         }
 
         cell1 := fmt.Sprintf("%s1", colName)
-        err1 = f.SetCellValue(def.SheetNameDefault, cell1, column.ColumnName)
+        err1 = f.SetCellValue(sheetName, cell1, column.ColumnName)
         if err1 != nil {
             glog.Fatal(gerror.Wrap(err1, "f.SetCellValue Failed"))
         }
         cell2 := fmt.Sprintf("%s2", colName)
-        err1 = f.SetCellValue(def.SheetNameDefault, cell2, column.ColumnComment)
+        err1 = f.SetCellValue(sheetName, cell2, column.ColumnComment)
         if err1 != nil {
             glog.Fatal(gerror.Wrap(err1, "f.SetCellValue Failed"))
         }
@@ -143,7 +144,7 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
                             }
                             cell := fmt.Sprintf("%s%d", colName, int(offset)+k+3)
                             lastCell = cell
-                            err2 = f.SetCellValue(def.SheetNameDefault, cell, columnValue)
+                            err2 = f.SetCellValue(sheetName, cell, columnValue)
                             if err2 != nil {
                                 errChan <- gerror.Wrap(err2, "f.SetCellValue Failed")
                                 return
@@ -160,7 +161,7 @@ func (td *TableDiff) doAddTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "f.NewStyle Failed"))
     }
-    err = f.SetCellStyle(def.SheetNameDefault, "A1", lastCell, style)
+    err = f.SetCellStyle(sheetName, "A1", lastCell, style)
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "f.SetCellStyle Failed"))
     }

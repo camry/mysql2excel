@@ -97,8 +97,9 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
     diffColumnList, diffColumnMap := td.diffColumn(sourceColumnList, targetColumnList)
 
     xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s（%s）", table.TableName, table.TableComment))
+    sheetName := lo.Substring(table.TableName, 0, 31)
 
-    xlsxFile, err := excel.NewFile()
+    xlsxFile, err := excel.NewFile(sheetName)
     if err != nil {
         glog.Fatal(gerror.Wrap(err, "excel.NewFile Failed"))
     }
@@ -117,18 +118,18 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
         if width < 20 {
             width = 20
         }
-        err = f.SetColWidth(def.SheetNameDefault, colName, colName, width)
+        err = f.SetColWidth(sheetName, colName, colName, width)
         if err != nil {
             glog.Fatal(gerror.Wrap(err, "f.SetColWidth Failed"))
         }
 
         cell1 := fmt.Sprintf("%s1", colName)
-        err = f.SetCellValue(def.SheetNameDefault, cell1, column.ColumnName)
+        err = f.SetCellValue(sheetName, cell1, column.ColumnName)
         if err != nil {
             glog.Fatal(gerror.Wrap(err, "f.SetCellValue Failed"))
         }
         cell2 := fmt.Sprintf("%s2", colName)
-        err = f.SetCellValue(def.SheetNameDefault, cell2, column.ColumnComment)
+        err = f.SetCellValue(sheetName, cell2, column.ColumnComment)
         if err != nil {
             glog.Fatal(gerror.Wrap(err, "f.SetCellValue Failed"))
         }
@@ -139,7 +140,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 if err2 != nil {
                     glog.Fatal(gerror.Wrap(err2, "f.NewStyle Failed"))
                 }
-                err2 = f.SetCellStyle(def.SheetNameDefault, cell1, cell2, style)
+                err2 = f.SetCellStyle(sheetName, cell1, cell2, style)
                 if err2 != nil {
                     glog.Fatal(gerror.Wrap(err2, "f.SetCellStyle Failed"))
                 }
@@ -148,7 +149,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 if err2 != nil {
                     glog.Fatal(gerror.Wrap(err2, "f.NewStyle Failed"))
                 }
-                err2 = f.SetCellStyle(def.SheetNameDefault, cell1, cell2, style)
+                err2 = f.SetCellStyle(sheetName, cell1, cell2, style)
                 if err2 != nil {
                     glog.Fatal(gerror.Wrap(err2, "f.SetCellStyle Failed"))
                 }
@@ -233,7 +234,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
                 cell := fmt.Sprintf("%s%d", colName, i+3)
                 if diffColumnMap[column.ColumnName] < def.DiffColumnStateDel {
-                    err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                    err = f.SetCellValue(sheetName, cell, sourceTableData[column.ColumnName])
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                         return
@@ -243,13 +244,13 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                         errChan <- err3
                         return
                     }
-                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    err = f.SetCellStyle(sheetName, cell, cell, style)
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                         return
                     }
                 } else {
-                    err = f.SetCellValue(def.SheetNameDefault, cell, "")
+                    err = f.SetCellValue(sheetName, cell, "")
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                         return
@@ -259,7 +260,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                         errChan <- err3
                         return
                     }
-                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    err = f.SetCellStyle(sheetName, cell, cell, style)
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                         return
@@ -289,7 +290,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                     cell := fmt.Sprintf("%s%d", colName, i+3)
                     switch diffColumnMap[column.ColumnName] {
                     case def.DiffColumnStateAdd:
-                        err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                        err = f.SetCellValue(sheetName, cell, sourceTableData[column.ColumnName])
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                             return
@@ -299,13 +300,13 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                             errChan <- err3
                             return
                         }
-                        err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                        err = f.SetCellStyle(sheetName, cell, cell, style)
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                             return
                         }
                     case def.DiffColumnStateDel:
-                        err = f.SetCellValue(def.SheetNameDefault, cell, targetTableDataMap[k][column.ColumnName])
+                        err = f.SetCellValue(sheetName, cell, targetTableDataMap[k][column.ColumnName])
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                             return
@@ -315,14 +316,14 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                             errChan <- err3
                             return
                         }
-                        err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                        err = f.SetCellStyle(sheetName, cell, cell, style)
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                             return
                         }
                     default:
                         if sourceTableData[column.ColumnName] != targetTableDataMap[k][column.ColumnName] {
-                            err = f.SetCellValue(def.SheetNameDefault, cell, fmt.Sprintf("%v←%v", sourceTableData[column.ColumnName], targetTableDataMap[k][column.ColumnName]))
+                            err = f.SetCellValue(sheetName, cell, fmt.Sprintf("%v←%v", sourceTableData[column.ColumnName], targetTableDataMap[k][column.ColumnName]))
                             if err != nil {
                                 errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                                 return
@@ -332,13 +333,13 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                                 errChan <- err3
                                 return
                             }
-                            err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                            err = f.SetCellStyle(sheetName, cell, cell, style)
                             if err != nil {
                                 errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                                 return
                             }
                         } else {
-                            err = f.SetCellValue(def.SheetNameDefault, cell, sourceTableData[column.ColumnName])
+                            err = f.SetCellValue(sheetName, cell, sourceTableData[column.ColumnName])
                             if err != nil {
                                 errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                                 return
@@ -364,7 +365,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
                 cell := fmt.Sprintf("%s%d", colName, i+3)
                 if diffColumnMap[column.ColumnName] != def.DiffColumnStateAdd {
-                    err = f.SetCellValue(def.SheetNameDefault, cell, targetTableData[column.ColumnName])
+                    err = f.SetCellValue(sheetName, cell, targetTableData[column.ColumnName])
                     if err != nil {
                         errChan <- err
                         return
@@ -374,13 +375,13 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                         errChan <- err3
                         return
                     }
-                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    err = f.SetCellStyle(sheetName, cell, cell, style)
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                         return
                     }
                 } else {
-                    err = f.SetCellValue(def.SheetNameDefault, cell, "")
+                    err = f.SetCellValue(sheetName, cell, "")
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                         return
@@ -390,7 +391,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                         errChan <- err3
                         return
                     }
-                    err = f.SetCellStyle(def.SheetNameDefault, cell, cell, style)
+                    err = f.SetCellStyle(sheetName, cell, cell, style)
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellStyle Failed")
                         return

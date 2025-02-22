@@ -5,6 +5,8 @@ import (
 
     "github.com/dromara/carbon/v2"
     "github.com/xuri/excelize/v2"
+
+    "mysql2excel/internal/def"
 )
 
 func FilterXlsxName(xlsxName string) string {
@@ -25,7 +27,7 @@ type XlsxFile struct {
     File *excelize.File
 }
 
-func NewFile() (*XlsxFile, error) {
+func NewFile(sheetName string) (*XlsxFile, error) {
     file := excelize.NewFile()
 
     err := file.SetDocProps(&excelize.DocProperties{
@@ -40,11 +42,15 @@ func NewFile() (*XlsxFile, error) {
         return nil, err
     }
 
-    index, err := file.NewSheet("Sheet1")
+    index, err := file.NewSheet(sheetName)
     if err != nil {
         return nil, err
     }
     file.SetActiveSheet(index)
+    err = file.DeleteSheet(def.SheetNameDefault)
+    if err != nil {
+        return nil, err
+    }
 
     return &XlsxFile{File: file}, nil
 }

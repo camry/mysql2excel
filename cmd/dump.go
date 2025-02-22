@@ -117,7 +117,7 @@ var (
                         defer wg.Done()
 
                         xlsxName := excel.FilterXlsxName(fmt.Sprintf("%s（%s）", table.TableName, table.TableComment))
-                        sheetName := "Sheet1"
+                        sheetName := lo.Substring(table.TableName, 0, 31)
 
                         var columnList []model.Column
                         err := sourceDb.Table("information_schema.COLUMNS").Where("TABLE_SCHEMA = ? AND TABLE_NAME = ?", table.TableSchema, table.TableName).Order("ORDINAL_POSITION ASC").Find(&columnList).Error
@@ -125,7 +125,7 @@ var (
                             glog.Fatal(gerror.Wrap(err, "sourceDb Table COLUMNS Find Failed"))
                         }
 
-                        xlsxFile, err := excel.NewFile()
+                        xlsxFile, err := excel.NewFile(sheetName)
                         if err != nil {
                             glog.Fatal(gerror.Wrap(err, "excel.NewFile Failed"))
                         }
