@@ -45,7 +45,7 @@ func (td *TableDiff) doDelTableList(tableList []model.Table) {
 
             bar := progress.AddBar(int64(page+1),
                 mpb.PrependDecorators(
-                    decor.Name(color.BlueString("%s", table.TableName)),
+                    decor.Name(fmt.Sprintf("%s %s", color.RedString("DEL"), color.BlueString(table.TableName))),
                     decor.Percentage(decor.WCSyncSpace),
                 ),
                 mpb.AppendDecorators(

@@ -40,7 +40,7 @@ var StyleDel = &excelize.Style{
     },
 }
 
-var StyleEqual = &excelize.Style{
+var StyleDiff = &excelize.Style{
     Border: []excelize.Border{
         {Type: "left", Color: "#adbac7", Style: 1},
         {Type: "top", Color: "#adbac7", Style: 1},

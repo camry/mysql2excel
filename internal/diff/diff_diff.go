@@ -54,7 +54,7 @@ func (td *TableDiff) doDiffTableList(tableList []model.Table) {
 
             bar := progress.AddBar(int64(sourcePage)+int64(targetPage)+sourceCount+targetCount+3,
                 mpb.PrependDecorators(
-                    decor.Name(color.BlueString("%s", table.TableName)),
+                    decor.Name(fmt.Sprintf("%s %s", color.YellowString("DIFF"), color.BlueString(table.TableName))),
                     decor.Percentage(decor.WCSyncSpace),
                 ),
                 mpb.AppendDecorators(
@@ -334,7 +334,7 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                                 errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                                 return
                             }
-                            style, err3 := f.NewStyle(def.StyleEqual)
+                            style, err3 := f.NewStyle(def.StyleDiff)
                             if err3 != nil {
                                 errChan <- err3
                                 return
