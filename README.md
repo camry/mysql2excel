@@ -2,6 +2,12 @@
 
 mysql2excel 是一个允许您将数据从 MySQL 数据库导出到 Excel 文件的工具。
 
+## 打包
+
+```bash
+go build mysql2excel
+```
+
 ## 用法
 
 ```bash
