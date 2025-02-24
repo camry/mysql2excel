@@ -1,6 +1,6 @@
 # mysql2excel
 
-mysql2excel 是一个允许您将数据从 MySQL 数据库导出到 Excel 文件的工具。
+mysql2excel 是一个允许您将数据从 MySQL 数据库比对并导出到 Excel 文件的工具。
 
 ## 打包
 
