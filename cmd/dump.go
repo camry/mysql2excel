@@ -184,6 +184,9 @@ var (
                                                 if v, ok1 := columnValue.(time.Time); ok1 {
                                                     columnValue = carbon.CreateFromStdTime(v).ToDateTimeString()
                                                 }
+                                                if bytes, ok1 := columnValue.([]byte); ok1 {
+                                                    columnValue = string(bytes)
+                                                }
                                                 err1 = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", colName, int(offset)+k+3), columnValue)
                                                 if err1 != nil {
                                                     errChan <- gerror.Wrap(err1, "f.SetCellValue Failed")
