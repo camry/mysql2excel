@@ -234,7 +234,11 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
                 cell := fmt.Sprintf("%s%d", colName, i+3)
                 if diffColumnMap[column.ColumnName] < def.DiffColumnStateDel {
-                    err = f.SetCellValue(sheetName, cell, sourceTableData[column.ColumnName])
+                    value := sourceTableData[column.ColumnName]
+                    if bytes, ok1 := value.([]byte); ok1 {
+                        value = string(bytes)
+                    }
+                    err = f.SetCellValue(sheetName, cell, value)
                     if err != nil {
                         errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                         return
@@ -275,7 +279,15 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 case def.DiffColumnStateAdd, def.DiffColumnStateDel:
                     isAdd = true
                 default:
-                    if sourceTableData[column.ColumnName] != targetTableDataMap[k][column.ColumnName] {
+                    sourceValue := sourceTableData[column.ColumnName]
+                    targetValue := targetTableDataMap[k][column.ColumnName]
+                    if sourceBytes, ok1 := sourceValue.([]byte); ok1 {
+                        sourceValue = string(sourceBytes)
+                    }
+                    if targetBytes, ok1 := targetValue.([]byte); ok1 {
+                        targetValue = string(targetBytes)
+                    }
+                    if sourceValue != targetValue {
                         isAdd = true
                     }
                 }
@@ -290,7 +302,11 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                     cell := fmt.Sprintf("%s%d", colName, i+3)
                     switch diffColumnMap[column.ColumnName] {
                     case def.DiffColumnStateAdd:
-                        err = f.SetCellValue(sheetName, cell, sourceTableData[column.ColumnName])
+                        value := sourceTableData[column.ColumnName]
+                        if bytes, ok1 := value.([]byte); ok1 {
+                            value = string(bytes)
+                        }
+                        err = f.SetCellValue(sheetName, cell, value)
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                             return
@@ -306,7 +322,11 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                             return
                         }
                     case def.DiffColumnStateDel:
-                        err = f.SetCellValue(sheetName, cell, targetTableDataMap[k][column.ColumnName])
+                        value := targetTableDataMap[k][column.ColumnName]
+                        if bytes, ok1 := value.([]byte); ok1 {
+                            value = string(bytes)
+                        }
+                        err = f.SetCellValue(sheetName, cell, value)
                         if err != nil {
                             errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                             return
@@ -322,8 +342,16 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                             return
                         }
                     default:
-                        if sourceTableData[column.ColumnName] != targetTableDataMap[k][column.ColumnName] {
-                            err = f.SetCellValue(sheetName, cell, fmt.Sprintf("%v←%v", sourceTableData[column.ColumnName], targetTableDataMap[k][column.ColumnName]))
+                        sourceValue := sourceTableData[column.ColumnName]
+                        targetValue := targetTableDataMap[k][column.ColumnName]
+                        if sourceBytes, ok1 := sourceValue.([]byte); ok1 {
+                            sourceValue = string(sourceBytes)
+                        }
+                        if targetBytes, ok1 := targetValue.([]byte); ok1 {
+                            targetValue = string(targetBytes)
+                        }
+                        if sourceValue != targetValue {
+                            err = f.SetCellValue(sheetName, cell, fmt.Sprintf("%v←%v", sourceValue, targetValue))
                             if err != nil {
                                 errChan <- gerror.Wrap(err, "f.SetCellValue Failed")
                                 return
@@ -365,7 +393,11 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 }
                 cell := fmt.Sprintf("%s%d", colName, i+3)
                 if diffColumnMap[column.ColumnName] != def.DiffColumnStateAdd {
-                    err = f.SetCellValue(sheetName, cell, targetTableData[column.ColumnName])
+                    value := targetTableData[column.ColumnName]
+                    if bytes, ok1 := value.([]byte); ok1 {
+                        value = string(bytes)
+                    }
+                    err = f.SetCellValue(sheetName, cell, value)
                     if err != nil {
                         errChan <- err
                         return
