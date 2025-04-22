@@ -11,6 +11,7 @@ import (
     "github.com/camry/g/frame/g"
     "github.com/camry/g/gerrors/gerror"
     "github.com/camry/g/glog"
+    "github.com/dromara/carbon/v2"
     "github.com/fatih/color"
     "github.com/samber/lo"
     "github.com/vbauerster/mpb/v8"
@@ -235,6 +236,9 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                 cell := fmt.Sprintf("%s%d", colName, i+3)
                 if diffColumnMap[column.ColumnName] < def.DiffColumnStateDel {
                     value := sourceTableData[column.ColumnName]
+                    if v, ok1 := value.(time.Time); ok1 {
+                        value = carbon.CreateFromStdTime(v).ToDateTimeString()
+                    }
                     if bytes, ok1 := value.([]byte); ok1 {
                         value = string(bytes)
                     }
@@ -303,6 +307,9 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                     switch diffColumnMap[column.ColumnName] {
                     case def.DiffColumnStateAdd:
                         value := sourceTableData[column.ColumnName]
+                        if v, ok1 := value.(time.Time); ok1 {
+                            value = carbon.CreateFromStdTime(v).ToDateTimeString()
+                        }
                         if bytes, ok1 := value.([]byte); ok1 {
                             value = string(bytes)
                         }
@@ -323,6 +330,9 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                         }
                     case def.DiffColumnStateDel:
                         value := targetTableDataMap[k][column.ColumnName]
+                        if v, ok1 := value.(time.Time); ok1 {
+                            value = carbon.CreateFromStdTime(v).ToDateTimeString()
+                        }
                         if bytes, ok1 := value.([]byte); ok1 {
                             value = string(bytes)
                         }
@@ -344,6 +354,12 @@ func (td *TableDiff) doDiffTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan 
                     default:
                         sourceValue := sourceTableData[column.ColumnName]
                         targetValue := targetTableDataMap[k][column.ColumnName]
+                        if v, ok1 := sourceValue.(time.Time); ok1 {
+                            sourceValue = carbon.CreateFromStdTime(v).ToDateTimeString()
+                        }
+                        if v, ok1 := targetValue.(time.Time); ok1 {
+                            targetValue = carbon.CreateFromStdTime(v).ToDateTimeString()
+                        }
                         if sourceBytes, ok1 := sourceValue.([]byte); ok1 {
                             sourceValue = string(sourceBytes)
                         }

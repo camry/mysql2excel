@@ -142,6 +142,9 @@ func (td *TableDiff) doDelTable(bar *mpb.Bar, wg *sync.WaitGroup, errChan chan e
                             if v, ok1 := columnValue.(time.Time); ok1 {
                                 columnValue = carbon.CreateFromStdTime(v).ToDateTimeString()
                             }
+                            if bytes, ok1 := columnValue.([]byte); ok1 {
+                                columnValue = string(bytes)
+                            }
                             cell := fmt.Sprintf("%s%d", colName, int(offset)+k+3)
                             lastCell = cell
                             err2 = f.SetCellValue(sheetName, cell, columnValue)
