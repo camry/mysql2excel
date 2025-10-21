@@ -30,8 +30,10 @@ import (
 )
 
 var (
-    dumpSource string
-    dumpDb     string
+    dumpSource        string
+    dumpDb            string
+    dumpIncludeTables []string
+    dumpExcludeTables []string
 
     dumpCmd = &cobra.Command{
         Use:   "dump",
@@ -48,7 +50,8 @@ var (
                 sourceUser = strings.Split(dumpSource[0:strings.LastIndex(dumpSource, "@")], ":")
                 sourceHost = strings.Split(dumpSource[strings.LastIndex(dumpSource, "@")+1:], ":")
 
-                tableList []model.Table
+                tableList      []model.Table
+                finalTableList []model.Table
             )
             sourceDbConfig := model.DbConfig{
                 User:     sourceUser[0],
@@ -78,10 +81,23 @@ var (
             }
             err = sourceDb.Table("information_schema.TABLES").Where("TABLE_SCHEMA = ?", dumpDb).Find(&tableList).Error
             if err != nil {
-                glog.Fatal(gerror.Wrap(err, "gdb.New Table TABLES Find Failed"))
+                glog.Fatal(gerror.Wrap(err, "dumpCmd sourceDb TABLES Find Failed"))
             }
-
-            tableChunkList := lo.Chunk(tableList, 10)
+            finalTableList = lo.Filter(tableList, func(table model.Table, index int) bool {
+                c1 := len(dumpIncludeTables) > 0
+                c2 := len(dumpExcludeTables) > 0
+                if c1 && c2 {
+                    return lo.Contains(dumpIncludeTables, table.TableName) && !lo.Contains(dumpExcludeTables, table.TableName)
+                }
+                if c1 {
+                    return lo.Contains(dumpIncludeTables, table.TableName)
+                }
+                if c2 {
+                    return !lo.Contains(dumpExcludeTables, table.TableName)
+                }
+                return true
+            })
+            tableChunkList := lo.Chunk(finalTableList, 10)
             for _, tableChunk := range tableChunkList {
                 errChan := make(chan error, 10)
                 var wg sync.WaitGroup
@@ -230,6 +246,8 @@ var (
 func init() {
     dumpCmd.Flags().StringVarP(&dumpSource, "source", "s", "", "指定源服务器。(格式: <user>:<password>@<host>:<port>)")
     dumpCmd.Flags().StringVarP(&dumpDb, "db", "d", "", "指定数据库。(格式: <source_db>:<target_db>)")
+    dumpCmd.Flags().StringSliceVarP(&dumpIncludeTables, "include-tables", "i", []string{}, "指定包含的表。(格式：base_activity,base_activity_limit)")
+    dumpCmd.Flags().StringSliceVarP(&dumpExcludeTables, "exclude-tables", "e", []string{}, "指定排除的表。(格式：base_dist,base_sdk)")
     cobra.CheckErr(dumpCmd.MarkFlagRequired("source"))
     cobra.CheckErr(dumpCmd.MarkFlagRequired("db"))
 }

@@ -19,9 +19,11 @@ import (
 )
 
 var (
-    diffSource string
-    diffTarget string
-    diffDb     string
+    diffSource        string
+    diffTarget        string
+    diffDb            string
+    diffIncludeTables []string
+    diffExcludeTables []string
 
     diffCmd = &cobra.Command{
         Use:   "diff",
@@ -114,7 +116,7 @@ var (
                 targetDb = sourceDb
             }
 
-            tableDiff := diff.NewTableDiff(sourceDb, targetDb, sourceDbConfig, targetDbConfig)
+            tableDiff := diff.NewTableDiff(sourceDb, targetDb, sourceDbConfig, targetDbConfig, diffIncludeTables, diffExcludeTables)
             err = tableDiff.Run()
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "tableDiff.Run Failed"))
@@ -127,6 +129,8 @@ func init() {
     diffCmd.Flags().StringVarP(&diffSource, "source", "s", "", "指定源服务器。(格式: <user>:<password>@<host>:<port>)")
     diffCmd.Flags().StringVarP(&diffTarget, "target", "t", "", "指定目标服务器。(格式: <user>:<password>@<host>:<port>)")
     diffCmd.Flags().StringVarP(&diffDb, "db", "d", "", "指定数据库。(格式: <source_db>:<target_db>)")
+    diffCmd.Flags().StringSliceVarP(&diffIncludeTables, "include-tables", "i", []string{}, "指定包含的表。(格式：base_activity,base_activity_limit)")
+    diffCmd.Flags().StringSliceVarP(&diffExcludeTables, "exclude-tables", "e", []string{}, "指定排除的表。(格式：base_dist,base_sdk)")
     cobra.CheckErr(diffCmd.MarkFlagRequired("source"))
     cobra.CheckErr(diffCmd.MarkFlagRequired("db"))
 }
