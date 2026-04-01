@@ -9,7 +9,7 @@ var (
         CompletionOptions: cobra.CompletionOptions{
             HiddenDefaultCmd: true,
         },
-        Version: "v1.0.4",
+        Version: "v1.0.5",
     }
 )
 
