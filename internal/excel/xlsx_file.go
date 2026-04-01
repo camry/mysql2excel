@@ -6,7 +6,7 @@ import (
     "github.com/dromara/carbon/v2"
     "github.com/xuri/excelize/v2"
 
-    "mysql2excel/internal/def"
+    "github.com/camry/mysql2excel/internal/def"
 )
 
 func FilterXlsxName(xlsxName string) string {

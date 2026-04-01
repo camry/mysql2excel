@@ -6,16 +6,16 @@ import (
     "strconv"
     "strings"
 
-    "github.com/camry/g/gerrors/gerror"
-    "github.com/camry/g/glog"
+    "github.com/camry/g/v2/gerrors/gerror"
+    "github.com/camry/g/v2/glog"
     "github.com/spf13/cobra"
     "gorm.io/driver/mysql"
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
 
-    "mysql2excel/internal/def"
-    "mysql2excel/internal/diff"
-    "mysql2excel/internal/model"
+    "github.com/camry/mysql2excel/internal/def"
+    "github.com/camry/mysql2excel/internal/diff"
+    "github.com/camry/mysql2excel/internal/model"
 )
 
 var (

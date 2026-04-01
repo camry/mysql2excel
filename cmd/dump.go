@@ -10,9 +10,9 @@ import (
     "time"
 
     "github.com/camry/fp"
-    "github.com/camry/g/frame/g"
-    "github.com/camry/g/gerrors/gerror"
-    "github.com/camry/g/glog"
+    "github.com/camry/g/v2/frame/g"
+    "github.com/camry/g/v2/gerrors/gerror"
+    "github.com/camry/g/v2/glog"
     "github.com/dromara/carbon/v2"
     "github.com/fatih/color"
     "github.com/samber/lo"
@@ -24,9 +24,9 @@ import (
     "gorm.io/gorm"
     "gorm.io/gorm/logger"
 
-    "mysql2excel/internal/def"
-    "mysql2excel/internal/excel"
-    "mysql2excel/internal/model"
+    "github.com/camry/mysql2excel/internal/def"
+    "github.com/camry/mysql2excel/internal/excel"
+    "github.com/camry/mysql2excel/internal/model"
 )
 
 var (

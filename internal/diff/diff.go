@@ -1,12 +1,12 @@
 package diff
 
 import (
-    "github.com/camry/g/gerrors/gerror"
-    "github.com/camry/g/glog"
+    "github.com/camry/g/v2/gerrors/gerror"
+    "github.com/camry/g/v2/glog"
     "github.com/samber/lo"
     "gorm.io/gorm"
 
-    "mysql2excel/internal/model"
+    "github.com/camry/mysql2excel/internal/model"
 )
 
 type TableDiff struct {

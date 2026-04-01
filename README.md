@@ -2,10 +2,10 @@
 
 mysql2excel 是一个允许您将数据从 MySQL 数据库比对并导出到 Excel 文件的工具。
 
-## 打包
+## 安装
 
 ```bash
-go build mysql2excel
+go install github.com/camry/mysql2excel@latest
 ```
 
 ## 用法

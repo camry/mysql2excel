@@ -3,10 +3,10 @@ package main
 import (
     "runtime"
 
-    "github.com/camry/g/glog"
+    "github.com/camry/g/v2/glog"
     "github.com/dromara/carbon/v2"
 
-    "mysql2excel/cmd"
+    "github.com/camry/mysql2excel/cmd"
 )
 
 func main() {
