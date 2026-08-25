@@ -72,13 +72,13 @@ var (
                     sourceDbConfig.Charset,
                 ),
             }), &gorm.Config{
-                SkipDefaultTransaction: true,
-                DisableAutomaticPing:   true,
+                SkipDefaultTransaction: true, // 禁用默认事务
                 Logger:                 logger.Default.LogMode(logger.Silent),
             })
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "gorm.Open Failed"))
             }
+
             err = sourceDb.Table("information_schema.TABLES").Where("TABLE_SCHEMA = ?", dumpDb).Find(&tableList).Error
             if err != nil {
                 glog.Fatal(gerror.Wrap(err, "dumpCmd sourceDb TABLES Find Failed"))

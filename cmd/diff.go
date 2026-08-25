@@ -67,8 +67,8 @@ var (
                     sourceDbConfig.Charset,
                 ),
             }), &gorm.Config{
-                SkipDefaultTransaction: true,
-                DisableAutomaticPing:   true,
+                SkipDefaultTransaction: true, // 禁用默认事务
+                PrepareStmt:            true, // 缓存预编译语句
                 Logger:                 logger.Default.LogMode(logger.Silent),
             })
             if err != nil {
@@ -105,8 +105,7 @@ var (
                         targetDbConfig.Charset,
                     ),
                 }), &gorm.Config{
-                    SkipDefaultTransaction: true,
-                    DisableAutomaticPing:   true,
+                    SkipDefaultTransaction: true, // 禁用默认事务
                     Logger:                 logger.Default.LogMode(logger.Silent),
                 })
                 if err != nil {
